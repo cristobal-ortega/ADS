@@ -1,0 +1,489 @@
+
+\section{skipList.hpp}
+\begin{lstlisting}[caption=Code from file skipList.hpp, style=myC]
+#ifndef SKIP_LIST_H
+#define SKIP_LIST_H
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <vector>
+#include <algorithm>
+#include <random>
+#include <cmath>
+#include <chrono>
+#include <sys/time.h>
+#include <iomanip>
+#include <unistd.h>
+
+struct Node {
+    int key;
+    std::string value;
+    std::vector<Node*> _next;
+    
+    Node (int k, const std::string& v, int level);
+};
+
+class skipList {
+  public:
+    skipList();
+    skipList(double probability);
+    ~skipList();
+
+    void print();
+
+    void insert (int key, std::string v);
+    void remove (int key);
+    std::string find(int key);
+    bool contains (int key);
+
+    //Support for ADS
+    long long total_search_cost();
+    int number_pointers();
+
+
+    Node* head;
+    Node* NIL;
+
+  private:
+    int maxLevel;
+    double prob;
+    int _height;
+    long long _lastFind;
+    long long _totalSearchCost;
+
+    int randomLevel();
+    int getLevel (std::vector<Node*>& x);
+};
+
+#endif
+\end{lstlisting}
+
+
+\section{skipList.cpp}
+\begin{lstlisting}[caption=Code from file skipList.cpp, style=myC]
+#include "skipList.hpp"
+
+skipList::skipList() {
+  this->prob = 0.5;
+  this->maxLevel = 16;
+  int key = std::numeric_limits<int>::min();
+  head = new Node(key, "head", maxLevel);
+
+  key = std::numeric_limits<int>::max();
+  NIL = new Node(key, "NIL", maxLevel);
+
+  for(unsigned int i = 0; i < maxLevel; i++) {
+    head->_next[i] = NIL;
+  }
+  //std::cout << "Created" << std::endl;
+  _height = 0;
+  _lastFind = 0;
+  _totalSearchCost = 0;
+}
+
+skipList::skipList(double probability) {
+  this->prob = probability;
+  this->maxLevel = 16;
+  int key = std::numeric_limits<int>::min();
+  head = new Node(key, "head", maxLevel);
+
+  key = std::numeric_limits<int>::max();
+  NIL = new Node(key, "NIL", maxLevel);
+
+  for(unsigned int i = 0; i < maxLevel; i++) {
+    head->_next[i] = NIL;
+  }
+  //std::cout << "Created" << std::endl;
+  _height = 0;
+  _lastFind = 0;
+  _totalSearchCost = 0;
+}
+
+Node::Node(int k, const std::string& v, int level) {
+  key = k;
+  value = v;
+  for(unsigned int i = 0; i< level; ++i)
+    _next.emplace_back(nullptr);
+}
+
+skipList::~skipList() {
+  //MEMORY IS FREE! :D
+  //But leakage problem is real :(
+}
+
+
+int skipList::getLevel( std::vector<Node*>& x ) {
+  int aux = 0;
+  int max = std::numeric_limits<int>::max();
+
+  //We are in NIL status
+  if (x[0]->key == max) {
+    return aux;
+  }
+
+  int result;
+  for (unsigned int i = 0; i < x.size(); ++i) {
+    if (x[i] != nullptr && x[i]->key != max){
+      ++aux;
+    }else{
+      break;
+    }
+  }
+  return aux;
+}
+
+void skipList::print() {
+  std::cout << "==========" << std::endl;
+  std::cout << "Printing information about skip list" << std::endl;
+  std::cout << "Probability: " << this->prob << " Max Level: " \
+    << this->maxLevel << std::endl;
+
+
+  Node* list = head;
+
+  std::cout << "HEAD address: " << &head << std::endl;
+  std::cout << "NIL address: " << &NIL << std::endl;
+
+  std::cout << "===PRINT AS A VECTOR===" << std::endl;
+  while (list->_next[0] != nullptr) {
+    std::cout << "Address: " << &list->_next[0] << std::endl;
+    std::cout << "Key: " << list->_next[0]->key \
+      << " value: " << list->_next[0]->value \
+      << " level: " << getLevel(list->_next) \
+      << std::endl;
+
+    list = list->_next[0];
+
+  }
+
+
+
+
+
+  std::cout << "==========" << std::endl;
+
+}
+
+
+void skipList::insert (int key, std::string v) {
+  //std::cout << "Inserting Key: " << key << " with value: " << v << std::endl;
+  int actualLevel = getLevel(head->_next);
+  std::vector<Node*> to_update(head->_next);
+
+  Node* x = head;
+
+  int l = actualLevel;
+  while ( l>=0 ){
+    if (x->_next[l] == nullptr || key <= x->_next[l]->key){
+      to_update[l] = x;
+      --l;
+    }
+    else {
+      x = x->_next[l];
+    }
+  }
+
+  if ( x->_next[0] == nullptr || x->_next[0]->key != key) {
+   int level = randomLevel();
+   int height = getLevel(to_update);
+   if ( level > height ) {
+     for (unsigned int i = height; i < level - 1; ++i) {
+      to_update[i] = head;
+     }
+   }
+   x = new Node(key, v, level);
+
+    for (unsigned i = 0; i < level; ++i) {
+      x->_next[i] = to_update[i]->_next[i];
+      to_update[i]->_next[i] = x;
+    }
+  }
+  else {
+    x->_next[0]->value = v;
+  }
+
+  return;
+}
+
+void skipList::remove (int key) {
+  //std::cout << "Removing Key: " << key << std::endl;
+  int actualLevel = getLevel(head->_next);
+  std::vector<Node*> to_update(head->_next);
+
+  Node* x = head;
+
+  int l = actualLevel;
+  while ( l>=0 ){
+    if (x->_next[l] == nullptr || key <= x->_next[l]->key){
+      to_update[l] = x;
+      --l;
+    }
+    else {
+      x = x->_next[l];
+    }
+  }
+  x = x->_next[0];
+
+  if ( x == nullptr) {
+    //we did something wrong
+    std::cout << "Removing a nullptr" << std::endl;
+    return; //we like return in voids
+  }
+
+  if (x->key == key) {
+    int height = getLevel(x->_next);
+    for (int i = 0; i <= to_update.size(); i++) {
+      if( to_update[i]->_next[i] != x)
+        break;
+
+      to_update[i]->_next[i] = x->_next[i];
+    }
+    delete x;
+
+  }
+
+}
+
+std::string skipList::find(int key) {
+  timeval start,end;
+  gettimeofday(&start,NULL);
+  
+  int actualLevel = getLevel(head->_next);
+  std::vector<Node*> to_update(head->_next);
+
+  Node* x = head;
+
+  int l = actualLevel;
+  while ( l>=0 ){
+    if (x->_next[l] == nullptr || key <= x->_next[l]->key){
+      to_update[l] = x;
+      --l;
+    }
+    else {
+      x = x->_next[l];
+    }
+  }
+  x = x->_next[0];
+
+
+
+  std::string result;
+  if ( x == nullptr) {
+    //we did something wrong
+    std::cout << "Searching in a nullptr :D" << std::endl;
+    result = "";
+  }
+
+  if (x->key == key) {
+    result = x->value;
+  } else {
+    result = "";
+  }
+
+  gettimeofday(&end,NULL);
+  this->_lastFind = (end.tv_sec - start.tv_sec)*1000000 + (end.tv_usec - start.tv_usec);
+  this->_totalSearchCost += this->_lastFind;
+
+  return result;
+}
+
+bool skipList::contains (int key) {
+  //std::cout << "Searching Key: " << key << std::endl;
+  int actualLevel = getLevel(head->_next);
+  std::vector<Node*> to_update(head->_next);
+
+  Node* x = head;
+
+  int l = actualLevel;
+  while ( l>=0 ){
+    if (x->_next[l] == nullptr || key <= x->_next[l]->key){
+      to_update[l] = x;
+      --l;
+    }
+    else {
+      x = x->_next[l];
+    }
+  }
+  x = x->_next[0];
+
+  if ( x == nullptr) {
+    //we did something wrong
+    std::cout << "Searching in a nullptr :D" << std::endl;
+    return false;
+  }
+
+  if (x->key == key) {
+    return true;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+int skipList::number_pointers() {
+  Node* list = head;
+  //std::cout << "Counting pointers" << std::endl;
+
+  //Initialize to 1 because of the HEAD pointer needed to have referenced
+  // the skip list, even empty, we need it
+  int total_pointers = 1;
+  while (list->_next[0] != nullptr) {
+    total_pointers += getLevel(list->_next);
+
+    list = list->_next[0];
+  }
+  return total_pointers;
+
+}
+
+long long skipList::total_search_cost(){
+  return this->_totalSearchCost;
+}
+
+//PRIVATE
+int skipList::randomLevel() {
+  //std::cout << "randomLevel generator" << std::endl;
+  //int aux = 1;
+  //srand ((unsigned)time(NULL));
+  //bool cond = ((double)std::rand() / RAND_MAX) < this->prob;
+  ////while (cond || (aux < maxLevel - 1) ) {
+    ////++aux;
+    ////cond = ((double) std::rand() / RAND_MAX) < this->prob;
+  ////}
+  //while ((((double)std::rand() / RAND_MAX)) < prob && std::abs(aux) < maxLevel)
+    //++aux;
+
+  int aux = 1;
+  std::random_device rd;
+  std::default_random_engine rng(rd());
+  std::uniform_real_distribution<float> uniform_dist(0,1);
+  float random = uniform_dist(rng);
+  bool cond = random < this->prob;
+  while ( cond && std::abs(aux) < maxLevel ) {
+    random = uniform_dist(rng);
+    cond = random < this->prob;
+    ++aux;
+  }
+  //std::cout << "RANDOM LEVEL: " << aux << std::endl;
+  return aux;
+}
+
+
+\end{lstlisting}
+
+\section{main.cpp (launch experiments and collect data)} \label{code:main}
+\begin{lstlisting}[caption=Code from file main.cpp, style=myC]
+#include "skipList.hpp"
+#include <stdio.h>
+
+#define REPETIONS 50
+
+void benchmark(int size) {
+
+  std::cout << "0";
+  for (double p = 0.1; p <= 1; p+=0.1) {
+    std::cout << ":" << p;
+  }
+  std::cout << std::endl;
+
+  float  n_pointers[11];
+  float  n_cost[11];
+  for (int i = 0; i < 11; i++){
+    n_pointers[i] = 0;
+    n_cost[i] = 0;
+  }
+
+  int pos = 0;
+  for (int j = 0; j < REPETIONS; j++) {
+    pos = 0;
+    for (double p = 0; p <= 1; p+=0.1) {
+      skipList sl(p);
+
+      //fill skip list
+      for (unsigned int i = 0; i < size; i++) {
+        std::stringstream ss;
+        ss << i;
+        sl.insert(i,ss.str());
+      }
+
+      //search in find list for cost
+      for (unsigned int i = size - 1; i > 0; i--) {
+        std::string aux = sl.find(i);
+      }
+      n_cost[pos] += sl.total_search_cost();
+      /*std::cout << sl.total_search_cost();*/
+      /*if (p+0.1 < 1.0 )*/
+        /*std::cout << ":";*/
+      /*else std::cout << std::endl;*/
+
+      /*n_pointers.push_back(sl.number_pointers());*/
+      n_pointers[pos] += sl.number_pointers();
+      ++pos;
+    }
+  }
+  for(int i = 0; i < 11; ++i) {
+    std::cout << n_cost[i]/REPETIONS;
+    if (i+1 < 11)
+      std::cout << ":";
+    else
+      std::cout << std::endl;
+
+  }
+  for(int i = 0; i < 11; ++i) {
+    std::cout << n_pointers[i]/REPETIONS;
+    if (i+1 < 11)
+      std::cout << ":";
+    else
+      std::cout << std::endl;
+
+  }
+
+
+}
+
+void test() {
+  int size = M;
+  double p = 0.75;
+
+  skipList sl(p);
+
+  //fill skip list
+  for (unsigned int i = 0; i < size; i++) {
+    std::stringstream ss;
+    ss << i;
+    sl.insert(i,ss.str());
+  }
+
+  //search in find list
+  for (unsigned int i = size - 1; i > 0; i--) {
+    std::string aux = sl.find(i);
+    /*std::cout << "Our string stored in key " << i << "is: " << aux << std::endl;*/
+  }
+  std::cout << "========REPORT===========" << std::endl;
+  std::cout << "N: " << size << std::endl;
+  std::cout << "p: " << p << std::endl;
+  std::cout << "Total search cost: " << sl.total_search_cost() << std::endl;
+  std::cout << "Total pointers: " << sl.number_pointers() << std::endl;
+
+}
+
+
+int main(int argc, char *argv[]) {
+  std::cout << "Testing Skip Lists..." << std::endl;
+
+  /*int debug = atoi(argv[1]);*/
+  int debug = 0;
+  if (!debug)
+    for (int i = M; i <= M*10; i +=M){
+      std::cout << "N: " << i << std::endl;
+      benchmark(i);
+
+    }
+  else
+    test();
+}
+
+\end{lstlisting}

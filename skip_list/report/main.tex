@@ -1,0 +1,268 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+\title{Advanced Data Structures:\\Skip Lists}
+\author{Constantino Gómez and Cristobal Ortega\\\{name.surname\}@est.fib.upc.edu}
+\date{June 2016}
+
+\usepackage{natbib}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage[font=small,labelfont=it]{caption}
+\usepackage{booktabs}
+\usepackage[titletoc]{appendix}
+\usepackage{hyperref}
+\usepackage{amsmath}
+
+
+
+%Use it for listings to not be split when pagebreaks appear
+\floatstyle{plain} % optionally change the style of the new float
+\newfloat{Code}{H}{myc}
+\lstdefinestyle{myC}{
+  frame=single,
+  captionpos=b,
+  belowcaptionskip=1\baselineskip,
+  breaklines=true,
+  xleftmargin=\parindent,
+  morekeywords={nullptr, key},
+  language=C++,
+  numbers=left,
+  numbersep=5pt,
+  showstringspaces=false,
+  basicstyle=\fontsize{8}{10}\ttfamily,
+  keywordstyle=\bfseries\color{blue}\ttfamily,
+  commentstyle=\itshape\color{gray}\ttfamily,
+  identifierstyle=\color{black},
+  stringstyle=\color{red},
+}
+
+\begin{document}
+
+\maketitle
+
+\section{Implementation}
+Our implementation of the skip lists are based on the material provided in the Advanced Data Structures course\citep{ads:slides}, therefore our skip list class is composed of nodes with the following characteristics:
+
+\begin{itemize}
+    \item integer key
+    \item string value
+    \item List of nodes corresponding to the different levels
+\end{itemize}
+
+\begin{Code}
+    \begin{lstlisting}[caption=Class Node, style=myC]
+    struct Node {
+        int key;
+        std::string value;
+    
+        std::vector<Node*> _next;
+        Node (int k, const std::string& v, int level);
+    };
+    \end{lstlisting}
+\end{Code}
+
+For simplification, we have fixed the data type our skip lists can work with. In our implementation, all the keys are Integers and the values are Strings.\\
+
+Also, instead of having a lists of pointers to nodes representing the different levels we can have, we simplified this mechanism as a vector with a maximum height (this has a limitation: we cannot have more levels than \textit{MAX\_LEVELS}).\\
+
+Even with these changes, we used the material provided in the course as a base to code the functions we had to develop for the assignment and the additional functions we consider that are needed to the basic usage of the skip lists. Our implementation includes this following data members and functions:
+
+\begin{itemize}
+    \item void insert (int key, string value): as in any data structure we need to be able to insert new elements 
+    \item void erase (int key): as in any data structure we need to be able to delete elements 
+    \item bool contains (int key): in order to check if inserts are done correctly, we coded this function to check if \textit{key} is in the list
+    \item string find (int key): we need to retrieve information from the data structure, even more, for this assignment we need to be able to measure the cost of finding
+    \item int total\_search\_cost(): requirement of the assignment
+    \item int number\_pointers(): requirement of the assignment
+    \item int randomLevel(): because of how skip lists work we need to provide a random function to get the height of new nodes created
+    \item int getLevel(vector\textless Node*\textgreater \& x): because the levels can differ we need an auxiliary function to evaluate the height of the given \textit{key}
+    \item void print(): coded to be able to debug the data structure, it prints the lowest level (the most complete list) of the data structure and prints for each \textit{key} its level.
+\end{itemize}
+
+The different functions that go through the data structure (insert, erase, contains, find, etc.) are almost the same as the snippet shown in the material \citep{ads:slides}:
+
+
+\begin{Code}
+    \begin{lstlisting}[caption=Snippet to iterate through the skip list, style=myC]
+      int l = actualLevel;
+      while ( l>=0 ){
+        if (x->_next[l] == nullptr || key <= x->_next[l]->key){
+          to_update[l] = x;
+          --l;
+        }
+        else {
+          x = x->_next[l];
+        }
+      }
+      x = x->_next[0];
+    \end{lstlisting}
+\end{Code}
+
+With the snippet shown above we are able to get the position where the pair \textless \textit{key, value}\textgreater \ should be or should not be placed. After, finding the position and depending on what function was called we will do different things: return true if it exists, return the value, etc.\\
+\\
+The code of our skip lists implementation can be obtained from the appendixes of this work and also from our Github repository\citep{github:cristobal}.
+
+\section{Experimental framework}
+
+We describe the hardware characteristics of the machine where this data structure has been tested in Table \ref{table:specs}
+
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{@{}ll@{}}
+    \toprule
+    Processor & Intel(R) Core(TM) i7-4600U \\
+    Frequency & 2.1 GHz                    \\
+    L1        & 64 KB                      \\
+    L2        & 512 KB                     \\
+    Memory    & 8 GB                       \\ \bottomrule
+    \end{tabular}%
+    \caption{Machine specifications}
+    \label{table:specs}
+\end{table}
+
+We use a main program to execute several tests and measure the different metrics required for the assignment:
+\begin{description}
+    \item[Total cost of searching.]{We need to search for every element and compute its cost, C(n,k), and for the total cost it will be the addition of all individual costs of searching: $C(n) = \sum_{k=1}^{n}C(n,k)$}
+    \item[Total usage of memory.]{We can count the number of pointers that we use for storing the data, at the end we would need to multiply each pointer to its real size on memory (key, value, etc.)}
+\end{description}
+
+In order to obtain these metrics values, we added auxiliar functions: \textit{total\_search\_cost} and \textit{number\_pointers}. With those values, we analyze and compare different skip lists configurations varying the size \textit{(N)} and the probability to copy the node to the upper level \textit{(p)}\\
+\\
+\textit{Comment: we repeat each experiment 50 times and get the average to minimize the impact of outliers in our results.}\\
+
+\section{Results} \label{sec:results}
+In this section we discuss the results obtained experimenting with our implementation of skip lists.\\
+\\
+From now on, we use the term skip list size to refer to the total number of elements contained in a skip list. In figure \ref{fig:search_cost} we show the total search cost in seconds ($C(n) = \sum_{k=1}^{n}C(n,k)$) varying the size of skip list and \textit{p} factor; meaning that for each size of skip lists ranging from 1K to 10K with 1K increase,  we try different [0 to 1; 0.1++] values of \textit{p} factor. The \textit{p} factor determines the probability of copying an element to an upper level.
+\\
+\\
+We easily identify different trends: 
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.8\textwidth]{imgs/time.png}
+    \caption{Total search cost for different sizes and \textit{p}}
+    \label{fig:search_cost}
+  \end{center}
+\end{figure}
+
+
+\begin{itemize}
+    \item For extreme values of \textit{p} searches become slower. The reason for this behavior is due to how we build the skip list, with extreme values of \textit{p} we get a \textit{flat} list:
+    \begin{itemize}
+        \item At \textit{p = 0},  elements are never copied to an upper level; resulting in a list with elements only in the 1st level.
+        \item At \textit{p = 1}, elements are \textbf{always} copied to an upper level (for this reason we have a \textit{MAX\_LEVELS}, so our data structure does not grow to infinity).
+    \end{itemize}
+    \item We focus on non-extreme \textit{p} values on figure \ref{fig:search_cost2}. As we see, all lines exhibit very similar behavior in terms of performance.
+\end{itemize}
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.8\textwidth]{imgs/time2.png}
+    \caption{Total search cost for different sizes and \textit{p} (without extreme values of \textit{p})}
+    \label{fig:search_cost2}
+  \end{center}
+\end{figure}
+
+To reason about memory space consumption, for different \textit{p} and skip list size values, we measured the total number of pointers allocated in each skip list configuration. Figure \ref{fig:num_pointers} shows our results varying p and skip list size the same way as in the previous experiment.\\
+\\
+We observe that for high values of \textit{p} we are using more pointers, therefore more memory space. This has an easy explanation: a higher value of \textit{p} more the possibility to copy the element to an upper level, and in consequence we will have more copies of the element (that as seen in figure \ref{fig:search_cost} can be useful for reducing the search cost).
+
+\begin{figure}[H]
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{imgs/pointers.png}
+    \caption{Total number of used pointers for different sizes and \textit{p}}
+    \label{fig:num_pointers}
+  \end{center}
+\end{figure}
+
+In this case, we filter high values of \textit{p} because they are not representative (see figure \ref{fig:num_pointers2}).
+
+\begin{figure}[H]
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{imgs/pointers2.png}
+    \caption{Total number of used pointers for different sizes and \textit{p} (without high values of \textit{p})}
+    \label{fig:num_pointers2}
+  \end{center}
+\end{figure}
+
+\subsection{Theoretical comparison}
+Following, we compare our implementation against the theorical skip list characteristics:
+
+\begin{itemize}
+    \item Total Search cost: $n\times\log n$
+    \item Space in memory: $n$
+\end{itemize}
+
+We compare search cost in figure \ref{fig:search_cost_teorical} and space in memory in figure \ref{fig:num_pointers_teorical}. Both of them are in logarithmic scale to see better how our implementation has the same growing shape. They only differ in a ratio, probably because on how we implemented our version.
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.8\textwidth]{imgs/time_teorical.png}
+    \caption{Total search cost for different sizes and \textit{p} (without extreme values of \textit{p}) and the theoretical function}
+    \label{fig:search_cost_teorical}
+  \end{center}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{imgs/pointers_teorical.png}
+    \caption{Total number of used pointers for different sizes and \textit{p} (without high values of \textit{p}) and the theorical function}
+    \label{fig:num_pointers_teorical}
+  \end{center}
+\end{figure}
+
+Additionaly, we tested how the probability \textit{p} affects our total search cost, the experiments realized are represented in the figure \ref{fig:limit}.
+We made 2 large skip lists (n=10000 and n=50000) and compared their total search cost against the theoretical one represented as the function: $\frac{-1}{q \ln q}$.
+
+\begin{figure}[H]
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{imgs/limit_q.png}
+    \caption{Total search cost for different probabilities \textit{p}}
+    \label{fig:limit}
+  \end{center}
+\end{figure}
+
+As we can observe in figure \ref{fig:limit} it seems to be a global minimum for the total search cost, in the next table \ref{table:limit} we wrote down the probability \textit{p} that offers the most performance in terms of total search cost, in the table we can see that we are close to the minimum theoretical (even lower), this may be an artifact on the implementation or the experiments:  (1) our implementation can have corner cases where we are not getting the good node, even we have debug several cases (coded in the main.cpp (appendix \ref{code:main})) or (2) our experiments are very short in repetitions, we had to lower the repetitions for the case when \textit{N=50000} due to high execution time, therefore we can be seeing problems with extreme cases that lower our average time.\\
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}cc@{}}
+\toprule
+N           & \begin{tabular}[c]{@{}l@{}}p with minimum\\  total search cost\end{tabular} \\ \midrule
+10000       & 0.33                                                                        \\
+50000       & 0.28                                                                            \\
+Theoretical & 0.37 ($\frac{1}{e}$)                                                           \\ \bottomrule
+\end{tabular}
+\caption{Probability \textit{p} that offers the best total search cost}
+\label{table:limit}
+\end{table}
+
+\newpage
+\section{Conclusion}
+After finalizing this assignment, we do have some final remarks to conclude.\\
+Skip lists seem a good alternative to that data structures that are more often used: their behavior it is similar to those alternatives (and also the idea behind them it is a quite interesting one) as we have proven in the previous section \ref{sec:results}\\
+Actually, we had a great time implementing this data structure because we never heard about them before and as we already said, we think this data structure is interesting.
+And, overall we think we are close enough to the theoretical values and that makes our implementation good to be used in the future.
+
+
+\bibliographystyle{plain}
+\bibliography{references.bib}
+
+\newpage
+
+\appendix
+\input{code}
+
+
+
+
+
+
+
+\end{document}
