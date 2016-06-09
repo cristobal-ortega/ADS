@@ -11,7 +11,7 @@ Cristóbal Ortega
 ----
 Demo for showing number of collisions detected with Octrees and without in a
 scene composed by balls inside a cube.  
-Help:  
+Help:
 - make && ./collisions to execute
 - t: toggle between calculating collisions with octrees or without
 - s: toggle showing existing octrees
