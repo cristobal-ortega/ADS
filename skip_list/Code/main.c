@@ -4,44 +4,6 @@
 #define M 50000
 #define REPETIONS 10
 
-
-void old_main(){
-  skipList sl;
-  //sl.print()();
-  sl.insert(1,"HI");
-  //sl.print()();
-  sl.insert(5,"GG");
-  //sl.print()();
-  sl.insert(2,"EZ");
-  //sl.print()();
-  sl.insert(4,"CONSTAN");
-  //sl.print()();
-  sl.insert(10,"NIGGER");
-  //sl.print()();
-  sl.insert(8,"FUCKR");
-  //sl.print()();
-  sl.remove(8);
-  //sl.print()();
-  sl.remove(1);
-  //sl.print()();
-  std::string aux = sl.find(10);
-  long long microseconds = sl.total_search_cost();
-  std::cout << "Time to find: " << microseconds << std::endl;
-  std::cout << "Our string stored in key 10 is: " << aux << std::endl;
-  sl.remove(10);
-  aux = sl.find(10);
-  microseconds = sl.total_search_cost();
-  std::cout << "Time to find: " << microseconds << std::endl;
-  std::cout << "Our string stored in key 10 is: " << aux << std::endl;
-
-  //sl.print()();
-  int ptrs = sl.number_pointers();
-  std::cout << "Total number of pointers is: " << ptrs << std::endl;
-
-
-
-}
-
 void secondBenchmark() {
   int size = 50000;
   std::cout << "1" << std::endl;

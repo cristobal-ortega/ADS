@@ -1,0 +1,10 @@
+#Latex
+
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+
+#Tags file
+tags

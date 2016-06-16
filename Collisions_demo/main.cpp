@@ -54,6 +54,7 @@ const float TIME_BETWEEN_UPDATES = 0.01f;
 const int TIMER_MS = 25; //The number of milliseconds to which the timer is set
 int _slowMethod;
 int _showOctree;
+int _stopSwitch;
 float _slowFactor;
 //Stores information regarding a ball
 struct Ball {
@@ -588,6 +589,7 @@ void handleKeypress(unsigned char key, int x, int y) {
                 case 'h':
                       cout << "t: toggle between calculating collisions with octrees or without" << endl;
                       cout << "s: toggle showing existing octrees" << endl;
+                      cout << "p: toggle rotating the scene" << endl;
                       cout << "ESC or q: quit" << endl;
                       cout << "Space: add 20 balls with random parameterrs" << endl;
                 case 't':
@@ -595,6 +597,9 @@ void handleKeypress(unsigned char key, int x, int y) {
                         break;
                 case 's':
                         _showOctree = !_showOctree;
+                        break;
+                case 'p':
+                        _stopSwitch = !_stopSwitch;
                         break;
                 case '+':
                         _slowFactor +=0.1;
@@ -806,10 +811,12 @@ void drawScene() {
 //Called every TIMER_MS milliseconds
 void update(int value) {
 	advance(_balls, _octree, (float)TIMER_MS / 1000.0f, _timeUntilUpdate);
-	_angle += (float)TIMER_MS / 100;
-	if (_angle > 360) {
-		_angle -= 360;
-	}
+        if (!_stopSwitch){
+          _angle += (float)TIMER_MS / 100;
+          if (_angle > 360) {
+                  _angle -= 360;
+          }
+        }
 	
 	glutPostRedisplay();
 	glutTimerFunc(TIMER_MS, update, 0);
@@ -830,6 +837,7 @@ int main(int argc, char** argv) {
         _slowMethod = 0;
         _showOctree = 0;
         _slowFactor=1;
+        _stopSwitch = 0;
 	
 	glutDisplayFunc(drawScene);
 	glutKeyboardFunc(handleKeypress);

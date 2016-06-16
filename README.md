@@ -28,6 +28,7 @@ Help:
 - make && ./collisions to execute
 - t: toggle between calculating collisions with octrees or without
 - s: toggle showing existing octrees
+- p: toggle rotating the scene
 - +: increase speed of balls
 - -: decrease speed of balls
 - ESC or q: quit
